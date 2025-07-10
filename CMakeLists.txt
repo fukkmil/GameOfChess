@@ -27,6 +27,8 @@ add_executable(GameOfChess main.cpp
         src/MoveGen.h
         src/GameState.cpp
         src/GameState.h
+        src/MenuWindow.cpp
+        src/MenuWindow.h
 )
 target_link_libraries(GameOfChess
         Qt::Core

@@ -38,6 +38,7 @@ void ChessBoardWidget::newGame() {
     if (animation_->state() == QAbstractAnimation::Running)
         animation_->stop();
     checkTimer_->stop();
+    gameOver_ = false;
     animating_ = false;
     animProgress_ = 0;
     currentMove_.reset();
@@ -49,6 +50,7 @@ void ChessBoardWidget::newGame() {
     selectedCell_.reset();
     legalMoves_.clear();
     update();
+    emit gameReset();
 }
 
 bool ChessBoardWidget::canUndo() const {
@@ -88,6 +90,7 @@ bool ChessBoardWidget::pixelToCell(const QPoint &pt, int *row, int *col) const {
 
 void ChessBoardWidget::mousePressEvent(QMouseEvent *event) {
     if (animating_) return;
+    if (gameOver_) return;
     int row, col;
     if (!pixelToCell(event->pos(), &row, &col)) return;
     const Board &board = gameState_.board();
@@ -148,11 +151,13 @@ void ChessBoardWidget::setAnimationProgress(qreal p) {
 
 void ChessBoardWidget::onAnimationFinished() {
     if (!currentMove_) return;
+    QString san = moveToSan(gameState_, *currentMove_);
     gameState_.applyMove(*currentMove_);
     sideToMove_ = gameState_.sideToMove();
     animating_ = false;
     animProgress_ = 0;
     currentMove_.reset();
+    emit moveMade(san);
     update();
 
     auto nextMoves = MoveGenerator::generateLegal(gameState_);
@@ -171,6 +176,8 @@ void ChessBoardWidget::onAnimationFinished() {
         } else {
             QMessageBox::information(this, tr("Ничья"), tr("Пат! Ничья."));
         }
+        gameOver_ = true;
+        newGame();
     } else {
         bool inCheck = MoveGenerator::isInCheck(gameState_.board(), sideToMove_);
         if (inCheck) {
@@ -314,3 +321,45 @@ void ChessBoardWidget::loadPixmaps() {
         }
     }
 }
+
+static QString pieceLetter(PieceType type) {
+    switch (type) {
+        case PieceType::King: return "K";
+        case PieceType::Queen: return "Q";
+        case PieceType::Rook: return "R";
+        case PieceType::Bishop: return "B";
+        case PieceType::Knight: return "N";
+        case PieceType::Pawn: return "";
+    }
+    return "";
+}
+
+QString ChessBoardWidget::moveToSan(const GameState &state, const Move &move) {
+    const Board &board = state.board();
+    auto movingOpt = board.pieceAt(move.fromRow, move.fromCol);
+    if (!movingOpt) return {};
+    const Piece moving = *movingOpt;
+    if (move.isCastling) {
+        return move.toCol == 6 ? QStringLiteral("O-O") : QStringLiteral("O-O-O");
+    }
+    bool capture = move.isEnPassant || board.pieceAt(move.toRow, move.toCol).has_value();
+    QString san;
+    QString piece = pieceLetter(moving.type());
+    if (!piece.isEmpty()) san += piece;
+    else if (capture) san += QChar('a' + move.fromCol);
+    if (capture) san += 'x';
+    san += QChar('a' + move.toCol);
+    san += QChar('1' + move.toRow);
+    if (move.promotion) {
+        san += '=';
+        san += pieceLetter(*move.promotion);
+    }
+    GameState temp = state;
+    temp.applyMove(move);
+    if (MoveGenerator::isInCheck(temp.board(), temp.sideToMove())) {
+        san += '+';
+    }
+    return san;
+}
+
+Color ChessBoardWidget::sideToMove() const noexcept { return sideToMove_; }
