@@ -44,3 +44,10 @@ void MenuWindow::onMoveMade(const QString &san) {
     }
     halfmoveCount_++;
 }
+
+void MenuWindow::onReturnToMenu() {
+    auto* mainMenu = new MainMenuWidget();
+    mainMenu->setAttribute(Qt::WA_DeleteOnClose);
+    mainMenu->show();
+    close();
+}

@@ -1,4 +1,5 @@
 #include "DifficultySelectorWidget.h"
+#include "MenuWindow.h"
 #include <QVBoxLayout>
 #include <QMessageBox>
 
