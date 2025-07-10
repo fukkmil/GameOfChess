@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 3.30)
 project(GameOfChess)
 
 set(CMAKE_CXX_STANDARD 26)
@@ -29,6 +29,10 @@ add_executable(GameOfChess main.cpp
         src/GameState.h
         src/MenuWindow.cpp
         src/MenuWindow.h
+        src/MainMenuWidget.h
+        src/MainMenuWidget.cpp
+        src/DifficultySelectorWidget.h
+        src/DifficultySelectorWidget.cpp
 )
 target_link_libraries(GameOfChess
         Qt::Core
