@@ -7,6 +7,7 @@
 #include <optional>
 #include <vector>
 #include <QPropertyAnimation>
+#include <QTimer>
 #include "GameState.h"
 
 class ChessBoardWidget : public QWidget {
@@ -29,6 +30,8 @@ protected:
 private slots:
     void onAnimationFinished();
 
+    void onCheckFlash();
+
 private:
     bool pixelToCell(const QPoint& pt, int* row, int* col) const;
     [[nodiscard]] qreal animationProgress() const;
@@ -45,6 +48,10 @@ private:
     QPointF startPos_, endPos_;
     qreal animProgress_;
     QPropertyAnimation* animation_;
+
+    QTimer* checkTimer_;
+    bool flashOn_;
+    int flashCount_;
 
     QPixmap piecePixmaps_[6][2];
     void loadPixmaps();

@@ -5,21 +5,29 @@
 #include <QMouseEvent>
 #include <QMessageBox>
 
+
 ChessBoardWidget::ChessBoardWidget(QWidget *parent)
     : QWidget(parent)
       , gameState_()
       , sideToMove_(Color::White)
       , animating_(false)
       , animProgress_(0.0)
-      , animation_(new QPropertyAnimation(this, "animationProgress", this)) {
+      , animation_(new QPropertyAnimation(this, "animationProgress", this))
+      , checkTimer_(new QTimer(this))
+      , flashOn_(false)
+      , flashCount_(0) {
     setMouseTracking(true);
     setFocusPolicy(Qt::StrongFocus);
     loadPixmaps();
     newGame();
+
     animation_->setDuration(150);
     animation_->setEasingCurve(QEasingCurve::InOutQuad);
     connect(animation_, &QPropertyAnimation::finished,
             this, &ChessBoardWidget::onAnimationFinished);
+
+    checkTimer_->setInterval(200);
+    connect(checkTimer_, &QTimer::timeout, this, &ChessBoardWidget::onCheckFlash);
 }
 
 ChessBoardWidget::~ChessBoardWidget() {
@@ -29,9 +37,12 @@ ChessBoardWidget::~ChessBoardWidget() {
 void ChessBoardWidget::newGame() {
     if (animation_->state() == QAbstractAnimation::Running)
         animation_->stop();
+    checkTimer_->stop();
     animating_ = false;
     animProgress_ = 0;
     currentMove_.reset();
+    flashOn_ = false;
+    flashCount_ = 0;
 
     gameState_ = GameState();
     sideToMove_ = gameState_.sideToMove();
@@ -148,6 +159,9 @@ void ChessBoardWidget::onAnimationFinished() {
     if (nextMoves.empty()) {
         bool inCheck = MoveGenerator::isInCheck(gameState_.board(), sideToMove_);
         if (inCheck) {
+            flashOn_ = false;
+            flashCount_ = 0;
+            checkTimer_->start();
             Color winner = (sideToMove_ == Color::White ? Color::Black : Color::White);
             QMessageBox::information(this, tr("Мат"),
                                      tr("Шах-мат! Победили %1").arg(
@@ -157,9 +171,25 @@ void ChessBoardWidget::onAnimationFinished() {
         } else {
             QMessageBox::information(this, tr("Ничья"), tr("Пат! Ничья."));
         }
+    } else {
+        bool inCheck = MoveGenerator::isInCheck(gameState_.board(), sideToMove_);
+        if (inCheck) {
+            flashOn_ = false;
+            flashCount_ = 0;
+            checkTimer_->start();
+        }
     }
 }
 
+void ChessBoardWidget::onCheckFlash() {
+    flashOn_ = !flashOn_;
+    flashCount_++;
+    if (flashCount_ >= 6) {
+        checkTimer_->stop();
+        flashOn_ = false;
+    }
+    update();
+}
 
 void ChessBoardWidget::paintEvent(QPaintEvent *) {
     QPainter painter(this);
@@ -176,6 +206,30 @@ void ChessBoardWidget::paintEvent(QPaintEvent *) {
                        yOffset + (rows - 1 - r) * cellSize,
                        cellSize, cellSize);
             painter.fillRect(cell, ((r + c) % 2 == 0) ? light : dark);
+        }
+    }
+
+    if (flashOn_) {
+        int kr = -1, kc = -1;
+        for (int r = 0; r < Board::SIZE; ++r) {
+            for (int c = 0; c < Board::SIZE; ++c) {
+                auto p = gameState_.board().pieceAt(r, c);
+                if (p && p->type() == PieceType::King && p->color() == sideToMove_) {
+                    kr = r;
+                    kc = c;
+                }
+            }
+        }
+        if (kr >= 0) {
+            int cellSize = qMin(width() / Board::SIZE, height() / Board::SIZE);
+            int xOffset = (width() - cellSize * Board::SIZE) / 2;
+            int yOffset = (height() - cellSize * Board::SIZE) / 2;
+            QRect kingCell(
+                xOffset + kc * cellSize,
+                yOffset + (Board::SIZE - 1 - kr) * cellSize,
+                cellSize, cellSize
+            );
+            painter.fillRect(kingCell, QColor(255, 0, 0, 100));
         }
     }
 
