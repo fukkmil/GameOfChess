@@ -6,33 +6,48 @@
 #include <QPoint>
 #include <optional>
 #include <vector>
+#include <QPropertyAnimation>
 #include "GameState.h"
 
 class ChessBoardWidget : public QWidget {
     Q_OBJECT
+    Q_PROPERTY(qreal animationProgress READ animationProgress WRITE setAnimationProgress)
 
 public:
     explicit ChessBoardWidget(QWidget* parent = nullptr);
-    ~ChessBoardWidget() override = default;
+    ~ChessBoardWidget() override;
 
     void newGame();
-    bool canUndo() const;
+    [[nodiscard]] bool canUndo() const;
     void undoMove();
 
 protected:
     void paintEvent(QPaintEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
-    QSize minimumSizeHint() const override;
+    [[nodiscard]] QSize minimumSizeHint() const override;
+
+private slots:
+    void onAnimationFinished();
 
 private:
     bool pixelToCell(const QPoint& pt, int* row, int* col) const;
+    [[nodiscard]] qreal animationProgress() const;
+    void setAnimationProgress(qreal p);
+    void animateMove(const Move& move);
 
     GameState gameState_;
     Color sideToMove_;
     std::optional<QPoint> selectedCell_;
     std::vector<Move> legalMoves_;
 
+    bool animating_;
+    std::optional<Move> currentMove_;
+    QPointF startPos_, endPos_;
+    qreal animProgress_;
+    QPropertyAnimation* animation_;
+
     QPixmap piecePixmaps_[6][2];
     void loadPixmaps();
 };
+
 #endif //CHESSBOARDWIDGET_H
