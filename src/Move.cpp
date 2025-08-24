@@ -1,6 +1,8 @@
 #include "Move.h"
 #include <cctype>
 
+#include "GameState.h"
+
 Move::Move(int fr, int fc, int tr, int tc,
            std::optional<PieceType> promo,
            bool castling,
@@ -14,7 +16,7 @@ namespace {
     inline char rankChar(int row) noexcept { return static_cast<char>('1' + row); }
 }
 
-std::string Move::toUCI() const {
+std::string Move::toUCI() const  {
     std::string s;
     s += fileChar(fromCol);
     s += rankChar(fromRow);
@@ -62,4 +64,25 @@ std::optional<Move> Move::fromUCI(const std::string &uci) {
         }
     }
     return Move(fr, fc, tr, tc, promo);
+}
+
+std::optional<Move> Move::fromUCIInPosition(const std::string &uci, const GameState &state) {
+    auto base = Move::fromUCI(uci);
+    if (!base) return std::nullopt;
+    Move m = *base;
+    auto pc = state.board().pieceAt(m.fromRow, m.fromCol);
+    if (pc) {
+        if (pc->type() == PieceType::King && std::abs(m.toCol - m.fromCol) == 2) {
+            m.isCastling = true;
+        }
+        if (pc->type() == PieceType::Pawn && m.fromCol != m.toCol) {
+            bool destEmpty = !state.board().pieceAt(m.toRow, m.toCol).has_value();
+            auto ep = state.enPassantTarget();
+            if (destEmpty && ep && ep->first == m.toRow && ep->second == m.toCol) {
+                m.isEnPassant = true;
+            }
+        }
+    }
+
+    return m;
 }

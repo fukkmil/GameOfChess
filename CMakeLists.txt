@@ -33,6 +33,8 @@ add_executable(GameOfChess main.cpp
         src/MainMenuWidget.cpp
         src/DifficultySelectorWidget.h
         src/DifficultySelectorWidget.cpp
+        src/engine/StockFishClient.cpp
+        src/engine/StockFishClient.h
 )
 target_link_libraries(GameOfChess
         Qt::Core

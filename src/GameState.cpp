@@ -1,17 +1,24 @@
 #include "GameState.h"
-#include <sstream>
 
+#include <qstring.h>
+#include <sstream>
 GameState::GameState()
     : board_(), sideToMove_(Color::White),
       whiteKingSideCastle_(true), whiteQueenSideCastle_(true),
       blackKingSideCastle_(true), blackQueenSideCastle_(true),
       enPassantTarget_(std::nullopt), halfmoveClock_(0) {
-    std::string key = positionKey();
+    std::string key = fenFull();
     repetitionCounts_[key] = 1;
 }
 
 const Board &GameState::board() const noexcept { return board_; }
 Color GameState::sideToMove() const noexcept { return sideToMove_; }
+bool GameState::playingEngine() const noexcept { return playingEngine_; }
+Color GameState::engineSide() const noexcept { return engineSide_; }
+void GameState::setPlayingEngine(bool enabled, bool engineIsWhite) {
+    playingEngine_ = enabled;
+    engineSide_ = engineIsWhite ? Color::White : Color::Black;
+}
 
 bool GameState::canCastleKingSide(Color color) const noexcept {
     return (color == Color::White) ? whiteKingSideCastle_ : blackKingSideCastle_;
@@ -29,12 +36,12 @@ int GameState::halfmoveClock() const noexcept { return halfmoveClock_; }
 const std::vector<Move> &GameState::history() const noexcept { return history_; }
 
 int GameState::repetitionCount() const noexcept {
-    auto key = positionKey();
+    auto key = fenFull();
     auto it = repetitionCounts_.find(key);
     return (it != repetitionCounts_.end() ? it->second : 0);
 }
 
-std::string GameState::positionKey() const {
+std::string GameState::fenFull() const {
     std::ostringstream oss;
     for (int r = Board::SIZE - 1; r >= 0; --r) {
         int empty = 0;
@@ -56,9 +63,9 @@ std::string GameState::positionKey() const {
     oss << ' ' << (sideToMove_ == Color::White ? 'w' : 'b');
     oss << ' ';
     std::string cr;
-    if (whiteKingSideCastle_) cr += 'K';
+    if (whiteKingSideCastle_)  cr += 'K';
     if (whiteQueenSideCastle_) cr += 'Q';
-    if (blackKingSideCastle_) cr += 'k';
+    if (blackKingSideCastle_)  cr += 'k';
     if (blackQueenSideCastle_) cr += 'q';
     oss << (cr.empty() ? "-" : cr);
     oss << ' ';
@@ -69,6 +76,9 @@ std::string GameState::positionKey() const {
     } else {
         oss << '-';
     }
+    oss << ' ' << halfmoveClock_;
+    int fullmove = 1 + static_cast<int>(history_.size()) / 2;
+    oss << ' ' << fullmove;
     return oss.str();
 }
 
@@ -130,7 +140,7 @@ void GameState::applyMove(const Move &move) {
     history_.push_back(move);
     sideToMove_ = (sideToMove_ == Color::White ? Color::Black : Color::White);
 
-    std::string key = positionKey();
+    std::string key = fenFull();
     repetitionCounts_[key]++;
 }
 
@@ -139,7 +149,7 @@ bool GameState::undoMove() {
     StateSnapshot snap = std::move(snapshots_.back());
     snapshots_.pop_back();
 
-    board_ = std::move(snap.board);
+    board_ = snap.board;
     sideToMove_ = snap.side;
     whiteKingSideCastle_ = snap.wKS;
     whiteQueenSideCastle_ = snap.wQS;

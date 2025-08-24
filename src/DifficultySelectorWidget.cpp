@@ -26,24 +26,24 @@ DifficultySelectorWidget::DifficultySelectorWidget(QWidget* parent)
 
 void DifficultySelectorWidget::onEasyClicked() {
     QMessageBox::information(this, "Бот", "Игра с ботом (легкий уровень)");
-    auto* window = new MenuWindow();
+    auto* window = new MenuWindow(true, 1200, false);
     window->setAttribute(Qt::WA_DeleteOnClose);
     window->show();
-    close(); // Закрыть окно выбора сложности
+    close();
 }
 
 void DifficultySelectorWidget::onMediumClicked() {
     QMessageBox::information(this, "Бот", "Игра с ботом (средний уровень)");
-    auto* window = new MenuWindow();
+    auto* window = new MenuWindow(true, 1600, false);
     window->setAttribute(Qt::WA_DeleteOnClose);
     window->show();
-    close(); // Закрыть окно выбора сложности
+    close();
 }
 
 void DifficultySelectorWidget::onHardClicked() {
     QMessageBox::information(this, "Бот", "Игра с ботом (сложный уровень)");
-    auto* window = new MenuWindow();
+    auto* window = new MenuWindow(true, 2000, false);
     window->setAttribute(Qt::WA_DeleteOnClose);
     window->show();
-    close(); // Закрыть окно выбора сложности
+    close();
 }

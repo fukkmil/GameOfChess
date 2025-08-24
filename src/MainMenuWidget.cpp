@@ -29,7 +29,7 @@ void MainMenuWidget::onPlayWithComputerClicked() {
 
 void MainMenuWidget::onPlayWithHumanClicked() {
     close();
-    auto* window = new MenuWindow();
-    window->setAttribute(Qt::WA_DeleteOnClose); // Удаляется при закрытии
+    auto* window = new MenuWindow(false,1600,false);
+    window->setAttribute(Qt::WA_DeleteOnClose);
     window->show();
 }

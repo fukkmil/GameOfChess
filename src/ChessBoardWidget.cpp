@@ -8,7 +8,6 @@
 
 ChessBoardWidget::ChessBoardWidget(QWidget *parent)
     : QWidget(parent)
-      , gameState_()
       , sideToMove_(Color::White)
       , animating_(false)
       , animProgress_(0.0)
@@ -26,6 +25,17 @@ ChessBoardWidget::ChessBoardWidget(QWidget *parent)
     connect(animation_, &QPropertyAnimation::finished,
             this, &ChessBoardWidget::onAnimationFinished);
 
+    connect(&engine_, &StockfishClient::engineReady,
+        this, &ChessBoardWidget::onEngineReady);
+    connect(&engine_, &StockfishClient::bestMove,
+            this, &ChessBoardWidget::onEngineBestMove);
+    connect(&engine_, &StockfishClient::errorText,
+            this, &ChessBoardWidget::onEngineError);
+
+    connect(&engine_, &StockfishClient::info, this, [](const QString& s){
+        // qDebug() << "[sf]" << s;
+    });
+
     checkTimer_->setInterval(200);
     connect(checkTimer_, &QTimer::timeout, this, &ChessBoardWidget::onCheckFlash);
 }
@@ -37,7 +47,14 @@ ChessBoardWidget::~ChessBoardWidget() {
 void ChessBoardWidget::newGame() {
     if (animation_->state() == QAbstractAnimation::Running)
         animation_->stop();
+    qDebug() << "[mode] vsEngine=" << gameState_.playingEngine()
+         << "engineSide=" << (gameState_.engineSide() == Color::White ? "W":"B");
     checkTimer_->stop();
+
+    const bool vsEngine      = gameState_.playingEngine();
+    const bool engineIsWhite = gameState_.engineSide() == Color::White;
+    const int  elo           = engineElo_;
+
     gameOver_ = false;
     animating_ = false;
     animProgress_ = 0;
@@ -46,11 +63,27 @@ void ChessBoardWidget::newGame() {
     flashCount_ = 0;
 
     gameState_ = GameState();
+
+    gameState_.setPlayingEngine(vsEngine, engineIsWhite);
+
     sideToMove_ = gameState_.sideToMove();
     selectedCell_.reset();
     legalMoves_.clear();
     update();
+    updateInputLock();
     emit gameReset();
+
+    if (gameState_.playingEngine()) {
+        if (!engine_.isRunning())
+            engine_.start("/usr/bin/stockfish");
+        engine_.newGame();
+        engine_.setDifficultyElo(elo, true);
+        if ((engineIsWhite && sideToMove_ == Color::White) ||
+            (!engineIsWhite && sideToMove_ == Color::Black)) {
+            requestEngineMove();
+            }
+    }
+
 }
 
 bool ChessBoardWidget::canUndo() const {
@@ -88,13 +121,15 @@ bool ChessBoardWidget::pixelToCell(const QPoint &pt, int *row, int *col) const {
     return true;
 }
 
-void ChessBoardWidget::mousePressEvent(QMouseEvent *event) {
+void ChessBoardWidget::mousePressEvent(QMouseEvent *event) {\
+    if (gameState_.playingEngine() && sideToMove_ == gameState_.engineSide()) {
+        return;
+    }
     if (animating_) return;
     if (gameOver_) return;
     int row, col;
     if (!pixelToCell(event->pos(), &row, &col)) return;
     const Board &board = gameState_.board();
-
     if (!selectedCell_) {
         auto opt = board.pieceAt(row, col);
         if (opt && opt->color() == sideToMove_) {
@@ -121,6 +156,7 @@ void ChessBoardWidget::mousePressEvent(QMouseEvent *event) {
 
 void ChessBoardWidget::animateMove(const Move &move) {
     animating_ = true;
+    updateInputLock();
     currentMove_ = move;
 
     int rows = Board::SIZE;
@@ -159,7 +195,6 @@ void ChessBoardWidget::onAnimationFinished() {
     currentMove_.reset();
     emit moveMade(san);
     update();
-
     auto nextMoves = MoveGenerator::generateLegal(gameState_);
     if (nextMoves.empty()) {
         bool inCheck = MoveGenerator::isInCheck(gameState_.board(), sideToMove_);
@@ -185,7 +220,14 @@ void ChessBoardWidget::onAnimationFinished() {
             flashCount_ = 0;
             checkTimer_->start();
         }
+        if (gameState_.playingEngine()) {
+            Color engineColor = gameState_.engineSide();
+            if (engineColor == sideToMove_) {
+                requestEngineMove();
+            }
+        }
     }
+    updateInputLock();
 }
 
 void ChessBoardWidget::onCheckFlash() {
@@ -363,3 +405,93 @@ QString ChessBoardWidget::moveToSan(const GameState &state, const Move &move) {
 }
 
 Color ChessBoardWidget::sideToMove() const noexcept { return sideToMove_; }
+
+QStringList ChessBoardWidget::historyAsUci() const {
+    QStringList lst;
+    for (const Move& m : gameState_.history()) {
+        lst << QString::fromStdString(m.toUCI());
+    }
+    return lst;
+}
+
+void ChessBoardWidget::requestEngineMove() {
+    // qDebug() << "[engine]" << "vs=" << gameState_.playingEngine()
+    //      << "sideToMove=" << (sideToMove_==Color::White?"W":"B");
+
+    if (!gameState_.playingEngine() || gameOver_ || engineThinking_) return;
+    auto engineColor = gameState_.engineSide();
+    if (engineColor != sideToMove_) return;
+    engineThinking_ = true;
+    QString fen = QString::fromStdString(gameState_.fenFull());
+    engine_.setPositionFEN(fen);
+    engine_.goMovetime(3000); // 3 сек на ход
+}
+
+void ChessBoardWidget::onEngineBestMove(const QString& uci, const QString&) {
+    engineThinking_ = false;
+    qDebug() << "[engine] bestmove" << uci;
+    if (uci.isEmpty() || uci == "none" || uci == "(none)") {
+        auto nextMoves = MoveGenerator::generateLegal(gameState_);
+        bool inCheck = MoveGenerator::isInCheck(gameState_.board(), sideToMove_);
+        if (nextMoves.empty()) {
+            QMessageBox::information(this, tr("Мат/Пат"), inCheck ? tr("Мат!") : tr("Пат!"));
+        } else {
+            QMessageBox::information(this, tr("Стоп"), tr("Движок вернул (none)"));
+        }
+        gameOver_ = true;
+        newGame();
+        return;
+    }
+
+    auto parsed = Move::fromUCIInPosition(uci.toStdString(), gameState_);
+    if (!parsed) {
+        QMessageBox::warning(this, tr("Stockfish"), tr("Не удалось распарсить ход: %1").arg(uci));
+        return;
+    }
+    Move m = *parsed;
+
+    bool ok = false;
+    for (const auto& lm : MoveGenerator::generateLegal(gameState_)) {
+        if (lm.sameSquaresAndPromo(m)) { m = lm; ok = true; break; }
+    }
+    if (!ok) {
+        QMessageBox::warning(this, tr("Stockfish"), tr("Нелегальный ход от движка: %1").arg(uci));
+        return;
+    }
+
+    animateMove(m);
+}
+
+void ChessBoardWidget::onEngineReady() {
+     qDebug() << "Stockfish ready";
+}
+
+void ChessBoardWidget::onEngineError(const QString& msg) {
+    if (!gameState_.playingEngine()) return;
+    QMessageBox::warning(this, tr("Stockfish"), msg);
+}
+
+void ChessBoardWidget::setPlayVsEngine(bool enabled, bool engineIsWhite, int elo) {
+    if (enabled) {
+        engineElo_ = elo;
+        gameState_.setPlayingEngine(true, engineIsWhite);
+    } else {
+        gameState_.setPlayingEngine(false, false);
+        engineReady_ = false;
+        pendingEngineMove_ = false;
+        engineThinking_ = false;
+        engine_.quit();
+        userInputLocked_ = false;
+        setCursor(Qt::ArrowCursor);
+    }
+    newGame();
+}
+
+void ChessBoardWidget::updateInputLock() {
+    bool lock = animating_ || gameOver_;
+    if (gameState_.playingEngine() && sideToMove_ == gameState_.engineSide()) {
+        lock = true;
+    }
+    userInputLocked_ = lock;
+    setCursor(userInputLocked_ ? Qt::BusyCursor : Qt::ArrowCursor);
+}

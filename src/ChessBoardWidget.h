@@ -10,6 +10,7 @@
 #include <QTimer>
 #include <QString>
 #include "GameState.h"
+#include "engine/StockFishClient.h"
 
 class ChessBoardWidget : public QWidget {
     Q_OBJECT
@@ -21,7 +22,7 @@ public:
     ~ChessBoardWidget() override;
 
     void newGame();
-
+    void setPlayVsEngine(bool enabled, bool engineIsWhite, int elo);
     [[nodiscard]] bool canUndo() const;
 
     void undoMove();
@@ -40,6 +41,10 @@ protected:
     [[nodiscard]] QSize minimumSizeHint() const override;
 
 private slots:
+    void onEngineReady();
+    void onEngineBestMove(const QString& uci, const QString& ponder);
+    void onEngineError(const QString& msg);
+
     void onAnimationFinished();
 
     void onCheckFlash();
@@ -52,8 +57,17 @@ private:
     void setAnimationProgress(qreal p);
 
     void animateMove(const Move &move);
+    void requestEngineMove();
+    QStringList historyAsUci() const;
+    bool userInputLocked_ = false;
+    void updateInputLock();
 
     GameState gameState_;
+    StockfishClient engine_;
+    int engineElo_ = 1600;
+    bool engineThinking_ = false;
+    bool engineReady_ = false;
+    bool pendingEngineMove_ = false;
     bool gameOver_;
     Color sideToMove_;
     std::optional<QPoint> selectedCell_;

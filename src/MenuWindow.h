@@ -5,12 +5,13 @@
 #include <QListWidget>
 #include <QPushButton>
 #include "ChessBoardWidget.h"
-#include "MainMenuWidget.h"
 
 class MenuWindow : public QWidget {
     Q_OBJECT
 public:
     explicit MenuWindow(QWidget* parent = nullptr);
+    MenuWindow(bool vsEngine, int engineElo, bool engineIsWhite,
+               QWidget* parent = nullptr);
     ~MenuWindow() override = default;
 
 private slots:
@@ -23,6 +24,9 @@ private:
     QListWidget* historyList_;
     QPushButton* resignButton_;
     QPushButton* returnToMenuButton_;
+    bool vsEngine_;
+    int engineElo_;
+    bool engineIsWhite_;
     int halfmoveCount_;
 };
 

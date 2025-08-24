@@ -8,21 +8,26 @@
 #include <optional>
 #include <utility>
 #include <map>
+#include <qstring.h>
 #include <string>
 
 class GameState {
 public:
     GameState();
 
-    const Board& board() const noexcept;
-    Color sideToMove() const noexcept;
-    bool canCastleKingSide(Color color) const noexcept;
-    bool canCastleQueenSide(Color color) const noexcept;
-    std::optional<std::pair<int,int>> enPassantTarget() const noexcept;
-    int halfmoveClock() const noexcept;
-    const std::vector<Move>& history() const noexcept;
+    [[nodiscard]] const Board& board() const noexcept;
+    [[nodiscard]] Color sideToMove() const noexcept;
+    [[nodiscard]] bool playingEngine() const noexcept;
+    [[nodiscard]] Color engineSide() const noexcept;
+    [[nodiscard]] bool canCastleKingSide(Color color) const noexcept;
+    [[nodiscard]] bool canCastleQueenSide(Color color) const noexcept;
+    [[nodiscard]] std::optional<std::pair<int,int>> enPassantTarget() const noexcept;
+    [[nodiscard]] int halfmoveClock() const noexcept;
+    [[nodiscard]] const std::vector<Move>& history() const noexcept;
+    void setPlayingEngine(bool enabled, bool engineIsWhite);
+    [[nodiscard]] int repetitionCount() const noexcept;
+    [[nodiscard]] std::string fenFull() const;
 
-    int repetitionCount() const noexcept;
 
     void applyMove(const Move& move);
 
@@ -31,6 +36,8 @@ public:
 private:
     Board board_;
     Color sideToMove_;
+    bool playingEngine_;
+    Color engineSide_;
     bool whiteKingSideCastle_;
     bool whiteQueenSideCastle_;
     bool blackKingSideCastle_;
@@ -52,7 +59,6 @@ private:
     };
     std::vector<StateSnapshot> snapshots_;
 
-    std::string positionKey() const;
 };
 
 #endif //GAMESTATE_H

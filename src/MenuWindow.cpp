@@ -2,26 +2,44 @@
 #include <QVBoxLayout>
 #include <QMessageBox>
 
-MenuWindow::MenuWindow(QWidget *parent)
+#include "MainMenuWidget.h"
+
+MenuWindow::MenuWindow(QWidget* parent)
+    : MenuWindow(false, 1600, false, parent) {}
+
+MenuWindow::MenuWindow(bool vsEngine, int engineElo, bool engineIsWhite, QWidget* parent)
     : QWidget(parent)
       , board_(new ChessBoardWidget(this))
       , historyList_(new QListWidget(this))
       , resignButton_(new QPushButton(tr("Сдаться"), this))
-      , halfmoveCount_(0) {
+      , returnToMenuButton_(new QPushButton(tr("Меню"), this))
+      , halfmoveCount_(0)
+      , vsEngine_(vsEngine)
+      , engineElo_(engineElo)
+      , engineIsWhite_(engineIsWhite)
+{
     auto *mainLayout = new QHBoxLayout(this);
     mainLayout->addWidget(board_, 3);
 
     auto *sideLayout = new QVBoxLayout();
     sideLayout->addWidget(historyList_);
     sideLayout->addWidget(resignButton_);
+    sideLayout->addWidget(returnToMenuButton_);
     mainLayout->addLayout(sideLayout, 1);
 
     connect(resignButton_, &QPushButton::clicked, this, &MenuWindow::onResign);
+    connect(returnToMenuButton_, &QPushButton::clicked, this, &MenuWindow::onReturnToMenu);
     connect(board_, &ChessBoardWidget::moveMade, this, &MenuWindow::onMoveMade);
     connect(board_, &ChessBoardWidget::gameReset, this, [this]() {
         historyList_->clear();
         halfmoveCount_ = 0;
     });
+
+    if (vsEngine_) {
+        board_->setPlayVsEngine(true, engineIsWhite_, engineElo_);
+    } else {
+        board_->setPlayVsEngine(false,  false,  engineElo_);
+    }
 }
 
 void MenuWindow::onResign() {

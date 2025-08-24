@@ -1,7 +1,6 @@
 #ifndef DIFFICULTYSELECTORWIDGET_H
 #define DIFFICULTYSELECTORWIDGET_H
 
-#include "MenuWindow.h"
 #include <QWidget>
 #include <QPushButton>
 
