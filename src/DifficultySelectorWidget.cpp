@@ -49,27 +49,30 @@ DifficultySelectorWidget::DifficultySelectorWidget(QWidget* parent)
 }
 
 void DifficultySelectorWidget::onEasyClicked() {
-    const QString color = (decideEngineIsWhite() ? "чёрными" : "белыми");
+    const bool engineWhite = decideEngineIsWhite();
+    const QString color = (engineWhite ? "чёрными" : "белыми");
     QMessageBox::information(this, "Бот", "Игра с ботом (легкий уровень), вы играете " + color);
-    auto* window = new MenuWindow(true, 1200, decideEngineIsWhite());
+    auto* window = new MenuWindow(true, 1200, engineWhite);
     window->setAttribute(Qt::WA_DeleteOnClose);
     window->show();
     close();
 }
 
 void DifficultySelectorWidget::onMediumClicked() {
-    const QString color = (decideEngineIsWhite() ? "чёрными" : "белыми");
+    const bool engineWhite = decideEngineIsWhite();
+    const QString color = (engineWhite ? "чёрными" : "белыми");
     QMessageBox::information(this, "Бот", "Игра с ботом (легкий уровень), вы играете " + color);
-    auto* window = new MenuWindow(true, 1600, decideEngineIsWhite());
+    auto* window = new MenuWindow(true, 1600, engineWhite);
     window->setAttribute(Qt::WA_DeleteOnClose);
     window->show();
     close();
 }
 
 void DifficultySelectorWidget::onHardClicked() {
-    const QString color = (decideEngineIsWhite() ? "чёрными" : "белыми");
+    const bool engineWhite = decideEngineIsWhite();
+    const QString color = (engineWhite ? "чёрными" : "белыми");
     QMessageBox::information(this, "Бот", "Игра с ботом (легкий уровень), вы играете " + color);
-    auto* window = new MenuWindow(true, 2000, decideEngineIsWhite());
+    auto* window = new MenuWindow(true, 2000,engineWhite);
     window->setAttribute(Qt::WA_DeleteOnClose);
     window->show();
     close();

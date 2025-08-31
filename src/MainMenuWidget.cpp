@@ -76,9 +76,10 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent) {
 
 void MainMenuWidget::onPlayWithComputerClicked() {
     close();
-    auto* window = new MenuWindow(true, 1600, false);
-    window->setAttribute(Qt::WA_DeleteOnClose);
-    window->show();
+    difficultyWidget_ = new DifficultySelectorWidget();
+    difficultyWidget_->show();
+    difficultyWidget_->setAttribute(Qt::WA_DeleteOnClose);
+    difficultyWidget_->show();
 }
 
 void MainMenuWidget::onPlayWithHumanClicked() {
