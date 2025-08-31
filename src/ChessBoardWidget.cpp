@@ -26,13 +26,13 @@ ChessBoardWidget::ChessBoardWidget(QWidget *parent)
             this, &ChessBoardWidget::onAnimationFinished);
 
     connect(&engine_, &StockfishClient::engineReady,
-        this, &ChessBoardWidget::onEngineReady);
+            this, &ChessBoardWidget::onEngineReady);
     connect(&engine_, &StockfishClient::bestMove,
             this, &ChessBoardWidget::onEngineBestMove);
     connect(&engine_, &StockfishClient::errorText,
             this, &ChessBoardWidget::onEngineError);
 
-    connect(&engine_, &StockfishClient::info, this, [](const QString& s){
+    connect(&engine_, &StockfishClient::info, this, [](const QString &s) {
         // qDebug() << "[sf]" << s;
     });
 
@@ -48,12 +48,12 @@ void ChessBoardWidget::newGame() {
     if (animation_->state() == QAbstractAnimation::Running)
         animation_->stop();
     qDebug() << "[mode] vsEngine=" << gameState_.playingEngine()
-         << "engineSide=" << (gameState_.engineSide() == Color::White ? "W":"B");
+            << "engineSide=" << (gameState_.engineSide() == Color::White ? "W" : "B");
     checkTimer_->stop();
 
-    const bool vsEngine      = gameState_.playingEngine();
+    const bool vsEngine = gameState_.playingEngine();
     const bool engineIsWhite = gameState_.engineSide() == Color::White;
-    const int  elo           = engineElo_;
+    const int elo = engineElo_;
 
     gameOver_ = false;
     animating_ = false;
@@ -82,9 +82,8 @@ void ChessBoardWidget::newGame() {
         if ((engineIsWhite && sideToMove_ == Color::White) ||
             (!engineIsWhite && sideToMove_ == Color::Black)) {
             requestEngineMove();
-            }
+        }
     }
-
 }
 
 bool ChessBoardWidget::canUndo() const {
@@ -258,7 +257,7 @@ void ChessBoardWidget::paintEvent(QPaintEvent *) {
             painter.fillRect(cell, ((r + c) % 2 == 0) ? light : dark);
         }
     }
-
+    drawCoordinates(painter, xOffset, yOffset, cellSize);
     if (flashOn_) {
         int kr = -1, kc = -1;
         for (int r = 0; r < Board::SIZE; ++r) {
@@ -409,7 +408,7 @@ Color ChessBoardWidget::sideToMove() const noexcept { return sideToMove_; }
 
 QStringList ChessBoardWidget::historyAsUci() const {
     QStringList lst;
-    for (const Move& m : gameState_.history()) {
+    for (const Move &m: gameState_.history()) {
         lst << QString::fromStdString(m.toUCI());
     }
     return lst;
@@ -428,7 +427,7 @@ void ChessBoardWidget::requestEngineMove() {
     engine_.goMovetime(3000); // 3 сек на ход
 }
 
-void ChessBoardWidget::onEngineBestMove(const QString& uci, const QString&) {
+void ChessBoardWidget::onEngineBestMove(const QString &uci, const QString &) {
     engineThinking_ = false;
     qDebug() << "[engine] bestmove" << uci;
     if (uci.isEmpty() || uci == "none" || uci == "(none)") {
@@ -452,8 +451,12 @@ void ChessBoardWidget::onEngineBestMove(const QString& uci, const QString&) {
     Move m = *parsed;
 
     bool ok = false;
-    for (const auto& lm : MoveGenerator::generateLegal(gameState_)) {
-        if (lm.sameSquaresAndPromo(m)) { m = lm; ok = true; break; }
+    for (const auto &lm: MoveGenerator::generateLegal(gameState_)) {
+        if (lm.sameSquaresAndPromo(m)) {
+            m = lm;
+            ok = true;
+            break;
+        }
     }
     if (!ok) {
         QMessageBox::warning(this, tr("Stockfish"), tr("Нелегальный ход от движка: %1").arg(uci));
@@ -464,10 +467,10 @@ void ChessBoardWidget::onEngineBestMove(const QString& uci, const QString&) {
 }
 
 void ChessBoardWidget::onEngineReady() {
-     qDebug() << "Stockfish ready";
+    qDebug() << "Stockfish ready";
 }
 
-void ChessBoardWidget::onEngineError(const QString& msg) {
+void ChessBoardWidget::onEngineError(const QString &msg) {
     if (!gameState_.playingEngine()) return;
     QMessageBox::warning(this, tr("Stockfish"), msg);
 }
@@ -496,4 +499,46 @@ void ChessBoardWidget::updateInputLock() {
     }
     userInputLocked_ = lock;
     setCursor(userInputLocked_ ? Qt::BusyCursor : Qt::ArrowCursor);
+}
+
+void ChessBoardWidget::drawCoordinates(QPainter &p, int xOffset, int yOffset, int cellSize) {
+    p.save();
+
+    QFont f = p.font();
+    int px = std::max(10, cellSize / 6);
+    f.setPixelSize(px);
+    p.setFont(f);
+
+    auto contrastPen = [](bool lightSquare) -> QColor {
+        return lightSquare ? QColor(70, 70, 70, 220) : QColor(240, 240, 240, 230);
+    };
+
+    const int rBottomBoard = flipBoard_ ? 7 : 0;
+    const int srBottom = Board::SIZE - 1;
+
+    for (int c = 0; c < Board::SIZE; ++c) {
+        bool lightB = ((rBottomBoard + c) % 2 == 0);
+        p.setPen(contrastPen(lightB));
+        QRect cellB(xOffset + c * cellSize,
+                    yOffset + srBottom * cellSize,
+                    cellSize, cellSize);
+        p.drawText(cellB.adjusted(4, 0, -2, -2),
+                   Qt::AlignLeft | Qt::AlignBottom,
+                   QString(QChar('a' + c)));
+
+    }
+
+    for (int r = 0; r < Board::SIZE; ++r) {
+        int sr = toScreenRow(r);
+        bool lightL = ((r + 0) % 2 == 0);
+        p.setPen(contrastPen(lightL));
+        QRect cellL(xOffset + 0 * cellSize,
+                    yOffset + sr * cellSize,
+                    cellSize, cellSize);
+        p.drawText(cellL.adjusted(4, 2, 0, 0),
+                   Qt::AlignLeft | Qt::AlignTop,
+                   QString(QChar('1' + r)));
+    }
+
+    p.restore();
 }

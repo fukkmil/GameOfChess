@@ -96,6 +96,7 @@ private:
     inline int fromScreenRow(int sr) const {
         return flipBoard_ ? sr : (Board::SIZE - 1 - sr);
     }
+    void drawCoordinates(QPainter& p, int xOffset, int yOffset, int cellSize);
 };
 
 #endif //CHESSBOARDWIDGET_H
