@@ -65,6 +65,7 @@ void ChessBoardWidget::newGame() {
     gameState_ = GameState();
 
     gameState_.setPlayingEngine(vsEngine, engineIsWhite);
+    flipBoard_ = (gameState_.playingEngine() && gameState_.engineSide() == Color::White);
 
     sideToMove_ = gameState_.sideToMove();
     selectedCell_.reset();
@@ -114,9 +115,9 @@ bool ChessBoardWidget::pixelToCell(const QPoint &pt, int *row, int *col) const {
     int y = pt.y() - yOffset;
     if (x < 0 || y < 0) return false;
     int c = x / cellSize;
-    int r = rows - 1 - (y / cellSize);
+    int r = y / cellSize;
     if (r < 0 || r >= rows || c < 0 || c >= cols) return false;
-    *row = r;
+    *row = fromScreenRow(r);
     *col = c;
     return true;
 }
@@ -165,9 +166,9 @@ void ChessBoardWidget::animateMove(const Move &move) {
     int xOffset = (width() - cellSize * cols) / 2;
     int yOffset = (height() - cellSize * rows) / 2;
     QPoint fromPt(xOffset + move.fromCol * cellSize + cellSize / 2,
-                  yOffset + (rows - 1 - move.fromRow) * cellSize + cellSize / 2);
+                  yOffset + toScreenRow(move.fromRow) * cellSize + cellSize / 2);
     QPoint toPt(xOffset + move.toCol * cellSize + cellSize / 2,
-                yOffset + (rows - 1 - move.toRow) * cellSize + cellSize / 2);
+                yOffset + toScreenRow(move.toRow) * cellSize + cellSize / 2);
     startPos_ = fromPt;
     endPos_ = toPt;
     animation_->stop();
@@ -252,7 +253,7 @@ void ChessBoardWidget::paintEvent(QPaintEvent *) {
     for (int r = 0; r < rows; ++r) {
         for (int c = 0; c < cols; ++c) {
             QRect cell(xOffset + c * cellSize,
-                       yOffset + (rows - 1 - r) * cellSize,
+                       yOffset + toScreenRow(r) * cellSize,
                        cellSize, cellSize);
             painter.fillRect(cell, ((r + c) % 2 == 0) ? light : dark);
         }
@@ -275,7 +276,7 @@ void ChessBoardWidget::paintEvent(QPaintEvent *) {
             int yOffset = (height() - cellSize * Board::SIZE) / 2;
             QRect kingCell(
                 xOffset + kc * cellSize,
-                yOffset + (Board::SIZE - 1 - kr) * cellSize,
+                yOffset + toScreenRow(kr) * cellSize,
                 cellSize, cellSize
             );
             painter.fillRect(kingCell, QColor(255, 0, 0, 100));
@@ -286,7 +287,7 @@ void ChessBoardWidget::paintEvent(QPaintEvent *) {
         int sr = selectedCell_->x();
         int sc = selectedCell_->y();
         QRect sel(xOffset + sc * cellSize,
-                  yOffset + (rows - 1 - sr) * cellSize,
+                  yOffset + toScreenRow(sr) * cellSize,
                   cellSize, cellSize);
         painter.fillRect(sel, QColor(255, 255, 0, 100));
     }
@@ -296,7 +297,7 @@ void ChessBoardWidget::paintEvent(QPaintEvent *) {
             int tr = m.toRow, tc = m.toCol;
             QRect cellRect(
                 xOffset + tc * cellSize,
-                yOffset + (rows - 1 - tr) * cellSize,
+                yOffset + toScreenRow(tr) * cellSize,
                 cellSize,
                 cellSize
             );
@@ -330,7 +331,7 @@ void ChessBoardWidget::paintEvent(QPaintEvent *) {
             int t = static_cast<int>(p.type());
             int idx = (p.color() == Color::White) ? 0 : 1;
             QRect img(xOffset + c * cellSize + 4,
-                      yOffset + (rows - 1 - r) * cellSize + 4,
+                      yOffset + toScreenRow(r) * cellSize + 4,
                       cellSize - 8, cellSize - 8);
             painter.drawPixmap(img, piecePixmaps_[t][idx]);
         }
@@ -475,6 +476,7 @@ void ChessBoardWidget::setPlayVsEngine(bool enabled, bool engineIsWhite, int elo
     if (enabled) {
         engineElo_ = elo;
         gameState_.setPlayingEngine(true, engineIsWhite);
+        flipBoard_ = engineIsWhite;
     } else {
         gameState_.setPlayingEngine(false, false);
         engineReady_ = false;

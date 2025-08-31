@@ -2,18 +2,42 @@
 #include "MenuWindow.h"
 #include <QVBoxLayout>
 #include <QMessageBox>
+#include <QLabel>
+#include <QString>
+#include <QRandomGenerator>
 
 DifficultySelectorWidget::DifficultySelectorWidget(QWidget* parent)
     : QWidget(parent) {
+    auto* colorLabel = new QLabel("Цвет:", this);
+    whiteBtn_  = new QRadioButton("Я за белых", this);
+    blackBtn_  = new QRadioButton("Я за чёрных", this);
+    randomBtn_ = new QRadioButton("Случайно", this);
+    randomBtn_->setChecked(true);
+
+    colorGroup_ = new QButtonGroup(this);
+    colorGroup_->addButton(whiteBtn_,  0);
+    colorGroup_->addButton(blackBtn_,  1);
+    colorGroup_->addButton(randomBtn_, 2);
+
+    auto* colorRow = new QHBoxLayout();
+    colorRow->addWidget(colorLabel);
+    colorRow->addSpacing(8);
+    colorRow->addWidget(whiteBtn_);
+    colorRow->addWidget(blackBtn_);
+    colorRow->addWidget(randomBtn_);
+    colorRow->addStretch();
 
     easyButton_ = new QPushButton("Лёгкий", this);
     mediumButton_ = new QPushButton("Средний", this);
     hardButton_ = new QPushButton("Сложный", this);
 
-    QVBoxLayout* layout = new QVBoxLayout(this);
+    auto* layout = new QVBoxLayout(this);
+    layout->addLayout(colorRow);
+    layout->addSpacing(6);
     layout->addWidget(easyButton_);
     layout->addWidget(mediumButton_);
     layout->addWidget(hardButton_);
+    layout->addStretch();
 
     setLayout(layout);
     setWindowTitle("Выбор сложности");
@@ -25,25 +49,42 @@ DifficultySelectorWidget::DifficultySelectorWidget(QWidget* parent)
 }
 
 void DifficultySelectorWidget::onEasyClicked() {
-    QMessageBox::information(this, "Бот", "Игра с ботом (легкий уровень)");
-    auto* window = new MenuWindow(true, 1200, false);
+    const QString color = (decideEngineIsWhite() ? "чёрными" : "белыми");
+    QMessageBox::information(this, "Бот", "Игра с ботом (легкий уровень), вы играете " + color);
+    auto* window = new MenuWindow(true, 1200, decideEngineIsWhite());
     window->setAttribute(Qt::WA_DeleteOnClose);
     window->show();
     close();
 }
 
 void DifficultySelectorWidget::onMediumClicked() {
-    QMessageBox::information(this, "Бот", "Игра с ботом (средний уровень)");
-    auto* window = new MenuWindow(true, 1600, false);
+    const QString color = (decideEngineIsWhite() ? "чёрными" : "белыми");
+    QMessageBox::information(this, "Бот", "Игра с ботом (легкий уровень), вы играете " + color);
+    auto* window = new MenuWindow(true, 1600, decideEngineIsWhite());
     window->setAttribute(Qt::WA_DeleteOnClose);
     window->show();
     close();
 }
 
 void DifficultySelectorWidget::onHardClicked() {
-    QMessageBox::information(this, "Бот", "Игра с ботом (сложный уровень)");
-    auto* window = new MenuWindow(true, 2000, false);
+    const QString color = (decideEngineIsWhite() ? "чёрными" : "белыми");
+    QMessageBox::information(this, "Бот", "Игра с ботом (легкий уровень), вы играете " + color);
+    auto* window = new MenuWindow(true, 2000, decideEngineIsWhite());
     window->setAttribute(Qt::WA_DeleteOnClose);
     window->show();
     close();
+}
+
+bool DifficultySelectorWidget::decideEngineIsWhite() const {
+    const int id = colorGroup_->checkedId();
+    switch (id) {
+        case 0:
+            return false;
+        case 1:
+            return true;
+        case 2: default: {
+            const bool engineWhite = (QRandomGenerator::global()->bounded(2) == 1);
+            return engineWhite;
+        }
+    }
 }

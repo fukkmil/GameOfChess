@@ -82,12 +82,20 @@ private:
     QTimer *checkTimer_;
     bool flashOn_;
     int flashCount_;
+    bool flipBoard_ = false;
 
     QPixmap piecePixmaps_[6][2];
 
     void loadPixmaps();
 
     static QString moveToSan(const GameState &state, const Move &move);
+
+    inline int toScreenRow(int r) const {
+        return flipBoard_ ? r : (Board::SIZE - 1 - r);
+    }
+    inline int fromScreenRow(int sr) const {
+        return flipBoard_ ? sr : (Board::SIZE - 1 - sr);
+    }
 };
 
 #endif //CHESSBOARDWIDGET_H
